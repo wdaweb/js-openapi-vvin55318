@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="zh">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <title>Document</title>
+    <!-- Data Table css -->
+    <link rel="stylesheet" href="css/datatables.min.css"
+    />
+    <!-- jquery -->
+    <script type="text/javascript" src="js/jquery-3.4.1.js"></script>
+    <!-- mystyle -->
+    <style>
+      .container {
+        height: 85vh;
+        overflow-y: scroll;
+      }
+    </style>
+  </head>
+  <body class="bg-dark">
+    <h3 class="text-light text-center my-2">YouBike站點查詢</h3>
+    <p class="m-3 text-light text-center">
+      搜尋:<input
+        type="search"
+        class="light-table-filter"
+        data-table="order-table"
+        placeholder="請輸入關鍵字"
+      />
+    </p>
+    <div class="container bg-light">
+      <table id="tab" class="table order-table" style="width:100%">
+        <thead>
+          <tr>
+            <td>區域</td>
+            <td>站點名稱</td>
+            <td>總數量</td>
+            <td>剩餘數量</td>
+            <td>操作</td>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <!-- 
+        sno：站點代號、 
+        sna：場站名稱(中文)、 
+        tot：場站總停車格、 
+        sbi：場站目前車輛數量、 
+        sarea：場站區域(中文)、 
+        mday：資料更新時間、 
+        lat：緯度、 
+        lng：經度、 
+        ar：地(中文)、 
+        sareaen：場站區域(英文)、 
+        snaen：場站名稱(英文)、 
+        aren：地址(英文)、 
+        bemp：空位數量、 
+        act：全站禁用狀態 
+    -->
+
+    <script>
+      var data;
+      // ajax 取得 youbike 資料
+      $.getJSON(
+        " https://tcgbusfs.blob.core.windows.net/blobyoubike/YouBikeTP.json"
+      )
+        .done(function(re) {
+          // console.log(re);
+          data = re.retVal;
+
+          var area;
+          var loc;
+          var tot;
+          var ava;
+          var print;
+          //將ajax取得的資料印出來，如果站點有新增需要更改for迴圈數量，如果站點減少需要找出站點編號做continue
+          for (i = 0; i < 404; i++) {
+            // 1~9
+            if (i < 9) {
+              dd = "000" + (i + 1);
+              // console.log(dd);
+
+              // 10~99
+            } else if (i < 99) {
+              dd = "00" + (i + 1);
+              // console.log(dd);
+            }
+            // >100
+            else if (i < 159) {
+              dd = "0" + (i + 1);
+            }
+            //沒有160
+            else if (i == 159) {
+              continue;
+            }
+            //沒有197
+            else if (i < 196) {
+              dd = "0" + (i + 1);
+            }
+            //沒有198
+            else if (i == 197) continue;
+            //沒有199
+            else if (i == 198) continue;
+            //沒有200
+            else if (i == 199) continue;
+            // 201~404
+            else if (i < 404) {
+              dd = "0" + (i + 1);
+            }
+
+            area = data[dd].sarea;
+            loc = data[dd].sna;
+            tot = data[dd].tot;
+            ava = data[dd].sbi;
+            num = data[dd].sno;
+            print += `
+                <tr class="fir_do_tr">
+                    <td>${area}<input type="hidden" name="sarea" value="${area}"></td>
+                    <td>${loc}<input type="hidden" name="sareaen" value="${loc}"></td>
+                    <td>${tot}<input type="hidden" name="num" value="${num}"></td>
+                    <td>${ava}</td>
+                    <td><input type="button" class="insert" value="加入"></td>
+                </tr>
+                 `;
+          }
+          // ajax資料寫入html
+          $("tbody").html(print);
+
+          // 點擊事件，加入最愛，
+          $(".insert").on("click", function(re) {
+            let sarea =
+              re.target.parentNode.parentNode.children[0].children[0].value;
+            let sareaen =
+              re.target.parentNode.parentNode.children[1].children[0].value;
+            let num =
+              re.target.parentNode.parentNode.children[2].children[0].value;
+            //存成json格式
+            const newdata = {
+              sarea: sarea,
+              sareaen: sareaen,
+              num: num
+            };
+
+            // 將資料丟到api.php
+            $.post("api.php?do=insert", newdata, function(re) {
+              if (re.length == 10) alert(re);
+              // else $("tbody").prepend(re);
+              // 刷新資料
+              location.reload();
+            });
+          });
+
+          // 取得 我的最愛 的資料
+          $.get("api.php?do=select", function(re) {
+            //re丟果來的值改為物件，在前端這邊加工再印出來
+            let redata= JSON.parse(re);
+            // 取得物件(我的最愛)的數量
+            var obj_len=Object.keys(redata).length;
+
+
+            
+
+            for(i=0;i<obj_len;i++){
+            // 取得站點編號
+            re_nmb=Number(redata[i]['num'])-1;
+            // 用戰點編號取得總數量
+            var atotal=document.getElementsByClassName("fir_do_tr")[re_nmb].children[2].textContent
+            // 用戰點編號取得剩餘數量
+            var aava=document.getElementsByClassName("fir_do_tr")[re_nmb].children[3].textContent
+            $("tbody").prepend(`
+            <tr style='background:lightblue'>
+                <td>★${redata[i]['sarea']}<input type="hidden" value="${redata[i]['num']}"></td>
+                <td>${redata[i]['sareaen']}</td>
+                <td>${atotal}</td>
+                <td>${aava}</td>
+                <td><input type='button' class='del' value='刪除'></td>
+            </tr>
+            `);
+          }
+
+            // 點擊事件，刪除
+            $(".del").on("click", function(result) {
+              console.log(result);
+              let chk_nmb=result.target.parentNode.parentNode.children[0].children[0].value;
+              $.post("api.php?do=delete", {chk_nmb}, function() {
+              // 刷新資料
+              location.reload();
+              });
+            });
+          });
+        })
+        .fail(function() {
+          alert("this's open api goot false");
+        });
+    </script>
+
+    <!-- 搜尋功能 -->
+    <script>
+      (function(document) {
+        "use strict";
+
+        // 建立 LightTableFilter
+        var LightTableFilter = (function(Arr) {
+          var _input;
+
+          // 資料輸入事件處理函數
+          function _onInputEvent(e) {
+            _input = e.target;
+            var tables = document.getElementsByClassName(
+              _input.getAttribute("data-table")
+            );
+            Arr.forEach.call(tables, function(table) {
+              Arr.forEach.call(table.tBodies, function(tbody) {
+                Arr.forEach.call(tbody.rows, _filter);
+              });
+            });
+          }
+
+          // 資料篩選函數，顯示包含關鍵字的列，其餘隱藏
+          function _filter(row) {
+            var text = row.textContent.toLowerCase(),
+              val = _input.value.toLowerCase();
+            row.style.display = text.indexOf(val) === -1 ? "none" : "table-row";
+          }
+
+          return {
+            // 初始化函數
+            init: function() {
+              var inputs = document.getElementsByClassName(
+                "light-table-filter"
+              );
+              Arr.forEach.call(inputs, function(input) {
+                input.oninput = _onInputEvent;
+              });
+            }
+          };
+        })(Array.prototype);
+
+        // 網頁載入完成後，啟動 LightTableFilter
+        document.addEventListener("readystatechange", function() {
+          if (document.readyState === "complete") {
+            LightTableFilter.init();
+          }
+        });
+      })(document);
+    </script>
+  </body>
+</html>
